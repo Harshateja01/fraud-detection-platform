@@ -2,7 +2,16 @@ import os
 import requests
 import pandas as pd
 import streamlit as st
+API_BASE_URL = os.getenv(
+    "API_URL",
+    st.secrets.get(
+        "API_URL",
+        "http://127.0.0.1:8000"
+    )
+)
 
+API_URL = f"{API_BASE_URL}/score-transaction"
+HEALTH_URL = f"{API_BASE_URL}/health"
 
 # ============================================================
 # PAGE CONFIG
