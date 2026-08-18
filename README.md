@@ -1,97 +1,143 @@
 # Fraud Detection Platform
 
-An end-to-end machine learning fraud detection platform built to demonstrate a production-oriented fraud modeling workflow: feature engineering, leakage prevention, model training, business-cost optimization, explainability, API serving, monitoring, automated testing, and CI/CD.
+An end-to-end machine learning fraud detection platform covering **data engineering, leakage-safe feature engineering, XGBoost modeling, business-cost optimization, SHAP explainability, REST API serving, an investigator dashboard, production monitoring, automated testing, CI, and Docker deployment configuration**.
 
-The platform uses an XGBoost classifier as the champion fraud model and exposes predictions through a FastAPI service and an investigator-facing Streamlit dashboard.
+The project is designed around a practical question:
+
+> How do you take a fraud model beyond a notebook and turn it into an explainable, monitored, testable ML system?
 
 ---
 
-## Project Overview
+## Highlights
 
-Fraud detection is an extremely imbalanced classification problem where model quality cannot be evaluated using accuracy alone.
-
-This project focuses on:
-
-- Time-aware model validation
-- Leakage-safe feature engineering
-- Highly imbalanced classification
-- XGBoost fraud scoring
-- Business-cost-based threshold selection
-- Precision@K and Recall@K analysis
-- SHAP model explainability
-- Isolation Forest anomaly detection
-- Model persistence
-- FastAPI model serving
-- Streamlit investigator dashboard
-- Feature drift monitoring
-- Automated API and monitoring tests
+- **1.75M+ transactions** processed through the modeling pipeline
+- Time-based train / validation / test methodology
+- Leakage-safe customer and terminal behavioral features
+- **XGBoost champion model**
+- **0.8866 ROC-AUC**
+- **0.6613 PR-AUC**
+- **75.50% recall** on the September holdout period
+- Business-cost optimized operating threshold
+- Precision@K / Recall@K investigation-capacity analysis
+- SHAP global and transaction-level explanations
+- FastAPI real-time scoring service
+- Streamlit fraud-investigation dashboard
+- Feature drift monitoring with PSI
+- Prediction-score drift monitoring
+- Delayed-label model-performance monitoring
+- Unified model-health reporting
+- Drift stress testing
+- **14 automated tests**
 - GitHub Actions CI
-- Docker-based deployment configuration
-
-The objective is not simply to predict fraud, but to build a fraud detection workflow that reflects how an ML system could be evaluated and operated in practice.
+- Docker / Docker Compose configuration
 
 ---
 
-# Architecture
+# Demo
+
+## Fraud Investigator Dashboard
+
+The Streamlit application provides transaction-level fraud scoring, risk classification, alert decisions, and recommended investigation actions.
+
+![Fraud Detection Dashboard](docs/images/dashboard-overview.png)
+
+---
+
+## SHAP Explainability
+
+Every scored transaction can include factors that increase or reduce predicted fraud risk.
+
+![Fraud Model Explainability](docs/images/dashboard-explainability.png)
+
+---
+
+## FastAPI Scoring Service
+
+The champion model is exposed through a FastAPI REST service with health and transaction-scoring endpoints.
+
+![FastAPI Swagger Documentation](docs/images/api-swagger.png)
+
+---
+
+## Automated CI
+
+The complete automated test suite runs through GitHub Actions on a Linux runner.
+
+![GitHub Actions CI](docs/images/github-actions-ci.png)
+
+---
+
+# System Architecture
 
 ```text
-Transaction Data
-       |
-       v
-PostgreSQL
-       |
-       v
-Feature Engineering
-       |
-       +-------------------------------+
-       |                               |
-       v                               v
-Behavioral Features          Delayed Terminal Risk
-       |                               |
-       +---------------+---------------+
-                       |
-                       v
-               Modeling Dataset
-                       |
-                       v
-                Time-Based Split
-                       |
-             +---------+---------+
-             |                   |
-             v                   v
-         XGBoost          Isolation Forest
-         Champion         Anomaly Baseline
-             |
-             v
-      Threshold Optimization
-             |
-             v
-      Business Cost Analysis
-             |
-             v
-       Persisted Model
-             |
-       +-----+------+
-       |            |
-       v            v
-    FastAPI     Streamlit
-   Scoring API   Dashboard
-       |
-       v
- SHAP Explanations
+                         Transaction Data
+                                |
+                                v
+                           PostgreSQL
+                                |
+                                v
+                       Feature Engineering
+                                |
+               +----------------+----------------+
+               |                                 |
+               v                                 v
+       Customer Behavioral              Delayed Terminal
+            Features                     Risk Features
+               |                                 |
+               +----------------+----------------+
+                                |
+                                v
+                        Modeling Dataset
+                                |
+                                v
+                        Time-Based Split
+                                |
+                   +------------+------------+
+                   |                         |
+                   v                         v
+               XGBoost                Isolation Forest
+               Champion               Anomaly Baseline
+                   |
+                   v
+          Threshold Optimization
+                   |
+                   v
+           Business Cost Analysis
+                   |
+                   v
+           Persisted ML Artifacts
+                   |
+            +------+------+
+            |             |
+            v             v
+         FastAPI       Streamlit
+       Scoring API     Dashboard
+            |
+            v
+     SHAP Explanations
 
-Production Monitoring
-       |
-       v
- PSI Feature Drift
-       |
-       v
- Stable / Monitor / Review Required
 
-Engineering Quality
-       |
-       v
- Pytest -> GitHub Actions CI
+                  Production Monitoring
+                           |
+          +----------------+----------------+
+          |                |                |
+          v                v                v
+    Feature Drift    Prediction-Score   Delayed-Label
+        (PSI)             Drift          Performance
+          |                |                |
+          +----------------+----------------+
+                           |
+                           v
+                  Unified Model Health
+                           |
+                           v
+              HEALTHY / MONITOR / REVIEW
+
+
+                    Engineering Quality
+                           |
+                           v
+                 Pytest -> GitHub Actions
 ```
 
 ---
@@ -104,7 +150,7 @@ The modeling dataset contains:
 1,754,155 transactions
 ```
 
-A chronological split is used instead of a random train/test split.
+Fraud detection is highly imbalanced, so transactions are split **chronologically** rather than randomly.
 
 | Dataset | Transactions |
 |---|---:|
@@ -112,23 +158,21 @@ A chronological split is used instead of a random train/test split.
 | Validation | 296,559 |
 | Test | 287,873 |
 
-The final test period represents September transactions.
-
-The test fraud prevalence is approximately:
+The final test period contains September transactions with approximately:
 
 ```text
-0.8848%
+Fraud prevalence: 0.8848%
 ```
 
-This extreme imbalance makes metrics such as PR-AUC, recall, precision, and Precision@K more informative than raw accuracy.
+Because fewer than 1% of transactions are fraudulent, metrics such as **PR-AUC, recall, precision, Precision@K, and business cost** are more informative than accuracy.
 
 ---
 
 # Leakage-Safe Feature Engineering
 
-The champion model uses 13 features.
+The champion model uses **13 features**.
 
-### Transaction features
+### Transaction Features
 
 ```text
 tx_amount
@@ -136,7 +180,7 @@ during_weekend
 during_night
 ```
 
-### Customer behavioral features
+### Customer Behavioral Features
 
 ```text
 customer_tx_count_1h
@@ -147,7 +191,7 @@ customer_avg_amount_7d
 customer_amount_deviation
 ```
 
-### Terminal features
+### Terminal Features
 
 ```text
 terminal_tx_count_24h
@@ -156,9 +200,7 @@ terminal_fraud_rate_30d
 terminal_history_available
 ```
 
-Special attention was given to preventing target leakage.
-
-The following fields are NOT model features:
+The following identifiers and target fields are explicitly excluded from model features:
 
 ```text
 tx_fraud
@@ -168,24 +210,24 @@ customer_id
 terminal_id
 ```
 
-Historical terminal fraud rates use a **7-day label-availability delay**.
+Historical terminal fraud features use a **7-day label-availability delay**.
 
-This prevents the current transaction's fraud outcome or labels that would not yet have been available operationally from leaking into the prediction.
+This prevents fraud outcomes that would not have been known at transaction time from leaking into the model.
 
 ---
 
 # Leakage Audit
 
-Two models were compared.
+To evaluate whether historical terminal-risk information provides legitimate predictive value, two models were compared.
 
-### Model A — Behavioral Features Only
+### Behavioral Features Only
 
 ```text
 ROC-AUC: 0.6528
 PR-AUC:  0.2580
 ```
 
-### Model B — Behavioral + Delayed Terminal Risk
+### Behavioral + Delayed Terminal Risk
 
 ```text
 ROC-AUC: 0.8866
@@ -198,21 +240,21 @@ PR-AUC improvement:
 +0.4033
 ```
 
-The terminal-risk features therefore provide substantial predictive value.
+Delayed terminal-risk features therefore provide substantial predictive information without using future fraud labels.
 
-Because this is a synthetic dataset, persistent fraudulent-terminal patterns may be stronger than would normally be observed in a real production portfolio.
+Because this project uses synthetic transaction data, persistent fraudulent-terminal patterns may be stronger than those observed in a real payment portfolio.
 
 ---
 
 # Champion Model
 
-The final champion model is:
+The production candidate is an:
 
 ```text
-XGBoost
+XGBoost Classifier
 ```
 
-Training class balance:
+Training class distribution:
 
 ```text
 Legitimate transactions: 1,160,258
@@ -221,26 +263,26 @@ Fraud transactions:          9,465
 scale_pos_weight: 122.58
 ```
 
-Class weighting is used to account for the severe class imbalance.
+Class weighting helps address the extreme class imbalance.
 
 ---
 
 # Final Test Performance
 
-The frozen operating threshold is:
+The business-selected operating threshold was frozen before final test evaluation at:
 
 ```text
 0.46
 ```
 
-September test performance:
+September holdout performance:
 
 | Metric | Result |
 |---|---:|
-| ROC-AUC | 0.8866 |
-| PR-AUC | 0.6613 |
-| Precision | 0.1873 |
-| Recall | 0.7550 |
+| ROC-AUC | **0.8866** |
+| PR-AUC | **0.6613** |
+| Precision | 18.73% |
+| Recall | **75.50%** |
 | F1 | 0.3002 |
 | Alert Rate | 3.57% |
 
@@ -253,15 +295,15 @@ False Negatives:    624
 True Negatives: 276,983
 ```
 
-The model identifies approximately **75.5% of fraud transactions** while sending approximately **3.57% of transactions** to the alert queue.
+The model identifies approximately **75.5% of fraud transactions** while sending approximately **3.57% of transactions** to investigators.
 
 ---
 
 # Business Threshold Optimization
 
-A fraud model should not necessarily operate at the threshold that maximizes F1.
+A fraud model should not automatically operate at a probability threshold of `0.50`.
 
-The project therefore evaluates thresholds using business costs.
+The project evaluates candidate thresholds using explicit false-positive and false-negative costs.
 
 Base assumptions:
 
@@ -270,23 +312,23 @@ False-positive cost: $5
 False-negative cost: $500
 ```
 
-Cost sensitivity analysis produced the following operating points:
+Sensitivity analysis:
 
-| Scenario | FP Cost | FN Cost | Optimal Threshold | Recall | Precision | Alert Rate |
+| Scenario | FP Cost | FN Cost | Threshold | Recall | Precision | Alert Rate |
 |---|---:|---:|---:|---:|---:|---:|
 | Low fraud cost | $5 | $100 | 0.78 | 71.23% | 47.47% | 1.35% |
 | Moderate | $5 | $250 | 0.65 | 72.80% | 36.30% | 1.80% |
-| Base | $5 | $500 | 0.46 | 74.97% | 19.47% | 3.47% |
+| **Base** | **$5** | **$500** | **0.46** | **74.97%** | **19.47%** | **3.47%** |
 | High fraud cost | $5 | $1,000 | 0.39 | 76.21% | 14.21% | 4.83% |
 | High review cost | $20 | $500 | 0.78 | 71.23% | 47.47% | 1.35% |
 
-The final operating threshold was frozen at:
+The selected production threshold is:
 
 ```text
 0.46
 ```
 
-On the September test set, the estimated business cost under the base assumptions was:
+Estimated business cost on the September test period under the base assumptions:
 
 ```text
 $353,715
@@ -296,9 +338,9 @@ $353,715
 
 # Investigation Capacity — Precision@K
 
-Fraud teams often operate with a fixed investigation capacity.
+Fraud operations teams typically cannot investigate every transaction.
 
-For this reason, the model was also evaluated using Precision@K and Recall@K.
+The model is therefore also evaluated under fixed alert capacities.
 
 | Investigation Capacity | Fraud Found | Precision@K | Recall@K | Lift vs Random |
 |---:|---:|---:|---:|---:|
@@ -308,23 +350,21 @@ For this reason, the model was also evaluated using Precision@K and Recall@K.
 | 5,000 | 1,840 | 36.80% | 72.24% | 41.6x |
 | 10,000 | 1,921 | 19.21% | 75.42% | 21.7x |
 
-The top 1,000 highest-risk transactions contain:
+For example, among the **1,000 highest-risk transactions**:
 
 ```text
-992 fraud transactions
-Precision@1000: 99.20%
-Recall@1000:    38.95%
+Fraud transactions found: 992
+Precision@1000:          99.20%
+Recall@1000:             38.95%
 ```
 
-This demonstrates strong ranking performance for capacity-constrained investigation teams.
+This demonstrates strong ranking performance for investigation teams operating under limited review capacity.
 
 ---
 
 # Anomaly Detection Benchmark
 
-An Isolation Forest model was trained without fraud labels to provide an unsupervised benchmark.
-
-Results:
+An **Isolation Forest** model provides an unsupervised benchmark.
 
 ```text
 ROC-AUC: 0.8567
@@ -346,11 +386,9 @@ The supervised XGBoost model substantially outperforms the anomaly detector when
 
 # Model Explainability
 
-SHAP is used to explain model predictions.
+The platform uses **SHAP** for both global and transaction-level explanations.
 
 Global SHAP analysis was performed on 10,000 test transactions.
-
-Top global model drivers:
 
 | Rank | Feature | Mean Absolute SHAP |
 |---:|---|---:|
@@ -360,67 +398,42 @@ Top global model drivers:
 | 4 | customer_avg_amount_7d | 0.371537 |
 | 5 | terminal_fraud_rate_7d | 0.348273 |
 
-The platform also generates transaction-level explanations showing factors that increase and reduce predicted fraud risk.
-
-Example:
+At scoring time, the investigator dashboard presents separate factors that:
 
 ```text
-Fraud probability: 68.84%
-Risk level: MEDIUM
-Alert threshold: 46%
-Alert generated: YES
+Increase fraud risk
+Reduce fraud risk
 ```
 
-Example risk-increasing factors include:
-
-```text
-customer_amount_deviation
-tx_amount
-terminal_history_available
-during_night
-```
-
----
-
-# Model Persistence
-
-The trained production artifacts are stored under:
-
-```text
-models/
-```
-
-Artifacts:
-
-```text
-fraud_xgboost_model.joblib
-fraud_imputer.joblib
-fraud_model_metadata.joblib
-```
-
-The metadata contains the model configuration, feature list, and frozen decision threshold.
-
-This allows the API to load the already-trained champion model rather than retraining at startup.
+This gives investigators context around the model's decision rather than exposing only a probability.
 
 ---
 
 # FastAPI Scoring Service
 
-The model is exposed through a FastAPI REST service.
+The persisted champion model is served through FastAPI.
 
-Run locally:
+Start the API:
 
 ```bash
-uvicorn src.api:app --reload
+python -m uvicorn src.api:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Then open:
+Swagger documentation:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-The API returns:
+Main endpoints:
+
+```text
+GET  /
+GET  /health
+POST /score-transaction
+```
+
+Example scoring response:
 
 ```json
 {
@@ -434,39 +447,81 @@ The API returns:
 }
 ```
 
-The response also includes SHAP-based factors increasing and reducing the transaction's predicted fraud risk.
+The scoring response also includes SHAP-based factors that increase and reduce predicted fraud risk.
 
 ---
 
 # Streamlit Investigation Dashboard
 
-An investigator-facing Streamlit application is included.
-
-Run:
+Start the API first, then launch the dashboard:
 
 ```bash
-streamlit run src/app.py
+python -m streamlit run src/app.py
 ```
 
-The dashboard communicates with the FastAPI scoring service and provides an interactive interface for transaction risk assessment and model explanations.
+Open:
+
+```text
+http://localhost:8501
+```
+
+The dashboard communicates with FastAPI and provides:
+
+- Transaction input controls
+- Fraud probability
+- Risk level
+- Production threshold
+- Alert decision
+- Recommended action
+- Transaction context
+- SHAP explanations
+- Model information
 
 ---
 
-# Feature Drift Monitoring
+# Production Monitoring
 
-Production ML systems must monitor whether incoming data continues to resemble the data used to develop the model.
-
-This project implements **Population Stability Index (PSI)** monitoring across all 13 model features.
-
-Project monitoring thresholds:
+The project monitors the model at **three different levels**.
 
 ```text
-PSI < 0.10          STABLE
-0.10 <= PSI < 0.25  MODERATE DRIFT
-PSI >= 0.25         SIGNIFICANT DRIFT
+Incoming Features
+      |
+      v
+Feature Drift
+      |
+      v
+Prediction Scores
+      |
+      v
+Score Drift
+      |
+      v
+Delayed Fraud Labels
+      |
+      v
+Performance Monitoring
+      |
+      v
+Unified Model Health
 ```
 
-September monitoring found:
+This helps distinguish changes in the input population from changes in model behavior and actual predictive degradation.
+
+---
+
+## 1. Feature Drift Monitoring
+
+Population Stability Index (**PSI**) is calculated across all 13 model features.
+
+Monitoring policy:
+
+```text
+PSI < 0.10           -> STABLE
+0.10 <= PSI < 0.25   -> MODERATE DRIFT
+PSI >= 0.25          -> SIGNIFICANT DRIFT
+```
+
+September results:
 
 ```text
 Stable features:             12
@@ -474,41 +529,164 @@ Moderate drift features:      0
 Significant drift features:   1
 ```
 
-The significant feature was:
+The only significant change was:
 
 ```text
 terminal_history_available
 PSI: 0.7353
 ```
 
-This feature naturally changes as terminals accumulate historical observations.
+This variable naturally changes as more terminals accumulate sufficient historical observations.
 
-The monitoring system therefore separates expected **feature-maturity drift** from unexpected drift in core predictive variables.
-
-Final monitoring status:
+The monitoring framework therefore separates expected **feature-maturity drift** from unexpected predictive-feature drift.
 
 ```text
+Feature Drift Status:
 STABLE — EXPECTED FEATURE MATURITY
 ```
 
-No unexpected material drift was detected in the core predictive features.
+---
+
+## 2. Prediction-Score Monitoring
+
+The distribution of model fraud probabilities is monitored independently from the input features.
+
+Results:
+
+| Metric | Reference | Current |
+|---|---:|---:|
+| Mean score | 0.1836 | 0.1898 |
+| Median score | 0.1595 | 0.1629 |
+| P95 | 0.3717 | 0.3840 |
+| P99 | 0.8734 | 0.9163 |
+| Alert Rate | 3.31% | 3.56% |
+
+Prediction-score PSI:
+
+```text
+0.0129
+```
+
+Status:
+
+```text
+STABLE
+```
+
+Alert-rate change was only:
+
+```text
++0.25 percentage points
+```
+
+Fraud transactions also continued to receive substantially higher model scores:
+
+```text
+Average legitimate score: 0.1846
+Average fraud score:      0.7759
+Median fraud score:       0.9909
+```
+
+---
+
+## 3. Delayed-Label Performance Monitoring
+
+Once fraud outcomes mature, the monitoring layer evaluates actual predictive performance.
+
+September performance:
+
+```text
+PR-AUC:    0.6620
+Precision: 0.1878
+Recall:    0.7554
+```
+
+Compared with the pooled reference period:
+
+```text
+Reference PR-AUC:    0.6960
+Current PR-AUC:      0.6620
+Change:             -0.0340
+
+Reference Precision: 0.1982
+Current Precision:   0.1878
+Change:             -0.0104
+
+Reference Recall:    0.8098
+Current Recall:      0.7554
+Change:             -0.0544
+```
+
+The recall decrease crosses the project's moderate degradation threshold.
+
+Therefore:
+
+```text
+Model Performance Status: MONITOR
+```
+
+This does **not** automatically trigger retraining. It indicates that performance should be watched across subsequent mature-label periods.
+
+---
+
+# Unified Model Health
+
+The three monitoring layers are consolidated into a single operational health report.
+
+Current state:
+
+```text
+Feature Drift:          STABLE — EXPECTED FEATURE MATURITY
+Prediction Score Drift: STABLE
+Model Performance:      MONITOR
+
+----------------------------------------
+Overall Model Health:   MONITOR
+----------------------------------------
+```
+
+Active alert:
+
+```text
+MODERATE RECALL DEGRADATION
+```
+
+This demonstrates a tiered governance approach:
+
+```text
+HEALTHY
+   |
+   v
+MONITOR
+   |
+   v
+REVIEW REQUIRED
+```
+
+The system does not automatically retrain because of one moderate signal. Significant or persistent degradation would trigger model review.
+
+Run the unified report with:
+
+```bash
+python src/model_health_report.py
+```
 
 ---
 
 # Drift Stress Testing
 
-The monitoring system was also tested against an artificially shifted production batch.
+The drift detector was also evaluated against an artificially shifted production population.
 
-The stress scenario changed:
+Synthetic drift was introduced into:
 
 - Transaction amounts
 - Customer transaction velocity
-- Customer spending baselines
-- Customer amount deviations
+- Customer spending behavior
+- Customer amount deviation
 - Terminal transaction velocity
 - Historical terminal risk
 
-Results:
+The stress test produced:
 
 ```text
 Stable features:             3
@@ -522,27 +700,21 @@ The monitoring system correctly escalated to:
 REVIEW REQUIRED
 ```
 
-This demonstrates that the monitoring policy can distinguish normal production behavior from substantial unexpected feature drift.
+This validates that the monitoring policy can distinguish expected production evolution from substantial unexpected drift.
 
 ---
 
 # Automated Testing
 
-The project uses pytest for automated testing.
+The repository contains **14 automated tests**.
 
-Run:
+Run locally:
 
 ```bash
 python -m pytest -v
 ```
 
-Current suite:
-
-```text
-14 tests
-```
-
-The tests cover:
+Current coverage includes:
 
 - API root endpoint
 - Health endpoint
@@ -553,17 +725,23 @@ The tests cover:
 - Invalid fraud-rate validation
 - Stable PSI distributions
 - Small distribution shifts
-- Significant drift detection
+- Significant distribution shifts
 - Constant features
 - Changed constant features
 - Missing values
 - Empty input handling
 
+Current result:
+
+```text
+14 passed
+```
+
 ---
 
 # Continuous Integration
 
-GitHub Actions automatically runs the full test suite for pushes and pull requests to `main`.
+GitHub Actions automatically executes the test suite for pushes and pull requests to `main`.
 
 Workflow:
 
@@ -571,68 +749,85 @@ Workflow:
 .github/workflows/tests.yml
 ```
 
-CI pipeline:
+Pipeline:
 
 ```text
-Checkout repository
+Checkout Repository
         |
         v
-Set up Python 3.12
+Set Up Python 3.12
         |
         v
-Install dependencies
+Install Dependencies
         |
         v
-Run pytest
+Run Pytest
         |
         v
-14 automated tests
+14 Automated Tests
 ```
 
-The test suite runs successfully on both Windows development environments and GitHub's Linux runner.
+The suite has been validated on both the Windows development environment and GitHub's Linux runner.
 
 ---
 
 # Docker
 
-Docker configuration is included for the API and Streamlit dashboard.
-
-Files:
+The API and dashboard include Docker deployment configuration.
 
 ```text
 Dockerfile
 docker-compose.yml
 ```
 
-The intended architecture is:
+Architecture:
 
 ```text
-+---------------------+
-| Streamlit Dashboard |
-|      :8501          |
-+----------+----------+
++----------------------+
+| Streamlit Dashboard  |
+|        :8501         |
++----------+-----------+
            |
            | HTTP
            v
-+---------------------+
-|    FastAPI API      |
-|      :8000          |
-+----------+----------+
++----------------------+
+| FastAPI Scoring API  |
+|        :8000         |
++----------+-----------+
            |
            v
-+---------------------+
-| Persisted XGBoost   |
-| Model + SHAP        |
-+---------------------+
++----------------------+
+| Persisted XGBoost    |
+| Model + Imputer      |
+| Metadata + SHAP      |
++----------------------+
 ```
 
-Run with:
+Run:
 
 ```bash
 docker compose up --build
 ```
 
 Docker execution requires host virtualization support and a functioning Docker engine.
+
+---
+
+# Model Artifacts
+
+The trained production artifacts are persisted under:
+
+```text
+models/
+```
+
+```text
+fraud_xgboost_model.joblib
+fraud_imputer.joblib
+fraud_model_metadata.joblib
+```
+
+The metadata stores the feature configuration and frozen decision threshold so the serving layer can load the trained champion model without retraining at startup.
 
 ---
 
@@ -645,10 +840,17 @@ fraud-detection-platform/
 |   `-- workflows/
 |       `-- tests.yml
 |
+|-- docs/
+|   `-- images/
+|       |-- api-swagger.png
+|       |-- dashboard-explainability.png
+|       |-- dashboard-overview.png
+|       `-- github-actions-ci.png
+|
 |-- models/
-|   |-- fraud_xgboost_model.joblib
 |   |-- fraud_imputer.joblib
-|   `-- fraud_model_metadata.joblib
+|   |-- fraud_model_metadata.joblib
+|   `-- fraud_xgboost_model.joblib
 |
 |-- src/
 |   |-- api.py
@@ -667,7 +869,10 @@ fraud-detection-platform/
 |   |-- final_model_report.py
 |   |-- inspect_transactions.py
 |   |-- load_transactions.py
+|   |-- model_health_report.py
 |   |-- monitor_drift.py
+|   |-- monitor_model_performance.py
+|   |-- monitor_prediction_scores.py
 |   |-- save_champion_model.py
 |   |-- test_drift_detection.py
 |   |-- test_saved_model.py
@@ -692,93 +897,78 @@ fraud-detection-platform/
 
 # Technology Stack
 
-### Machine Learning
-
-- Python
-- pandas
-- NumPy
-- scikit-learn
-- XGBoost
-- SHAP
-
-### Data
-
-- PostgreSQL
-- SQLAlchemy
-
-### Model Serving
-
-- FastAPI
-- Uvicorn
-- Pydantic
-
-### Application
-
-- Streamlit
-
-### Testing & CI
-
-- pytest
-- GitHub Actions
-
-### Deployment
-
-- Docker
-- Docker Compose
+| Area | Technologies |
+|---|---|
+| Machine Learning | Python, pandas, NumPy, scikit-learn, XGBoost |
+| Explainability | SHAP |
+| Data | PostgreSQL, SQLAlchemy |
+| API | FastAPI, Uvicorn, Pydantic |
+| Application | Streamlit |
+| Monitoring | PSI, scikit-learn metrics |
+| Testing | pytest |
+| CI | GitHub Actions |
+| Deployment | Docker, Docker Compose |
+| Persistence | joblib |
 
 ---
 
 # Key Engineering Decisions
 
-### Time-based validation
+### Time-Based Validation
 
-Transactions are split chronologically rather than randomly to better approximate deployment against future transactions.
+Transactions are split chronologically rather than randomly so evaluation more closely represents deployment against future transactions.
 
-### Leakage-aware historical risk
+### Leakage-Aware Historical Features
 
-Terminal fraud rates use delayed labels instead of information that would not have been available when a transaction occurred.
+Terminal fraud rates use delayed labels instead of fraud outcomes that would not have been available when the transaction occurred.
 
-### Business-driven threshold
+### Imbalance-Aware Evaluation
 
-The operating threshold is selected using false-positive and false-negative costs rather than automatically using `0.50`.
+PR-AUC, recall, Precision@K, Recall@K, and business cost are emphasized instead of accuracy.
 
-### Capacity-aware evaluation
+### Business-Driven Thresholding
 
-Precision@K and Recall@K quantify performance when investigators can only review a limited number of alerts.
+The production threshold is selected using false-positive and false-negative costs rather than automatically using `0.50`.
 
-### Explainable predictions
+### Capacity-Aware Evaluation
+
+Precision@K and Recall@K evaluate model usefulness when investigators can only review a limited number of transactions.
+
+### Explainable Predictions
 
 SHAP provides both global feature importance and transaction-level explanations.
 
-### Production monitoring
+### Multi-Layer Monitoring
 
-PSI-based feature monitoring detects distribution changes and distinguishes expected feature maturity from unexpected predictive drift.
+Feature distributions, prediction scores, and delayed-label performance are monitored independently before being consolidated into overall model health.
 
-### Automated quality control
+### Tiered Model Governance
 
-API and drift tests run automatically through GitHub Actions.
+Monitoring distinguishes:
+
+```text
+HEALTHY
+MONITOR
+REVIEW REQUIRED
+```
+
+Moderate degradation does not automatically trigger retraining.
+
+### Automated Quality Control
+
+API and drift-monitoring tests execute automatically through GitHub Actions.
 
 ---
 
 # Limitations
 
-This project uses a synthetic fraud dataset.
+This project uses a **synthetic fraud dataset**.
 
-Synthetic data can contain stronger or cleaner fraud patterns than real-world payment environments. In particular, persistent terminal-risk patterns may be more predictive than they would be in a live portfolio.
+Synthetic data can contain stronger or cleaner fraud patterns than real payment environments. Persistent terminal-risk patterns, in particular, may be more predictive than they would be in a live financial portfolio.
 
-The business costs used for threshold optimization are illustrative assumptions rather than costs derived from an actual fraud operations team.
+The false-positive and false-negative costs used for threshold optimization are illustrative assumptions rather than values obtained from a real fraud-operations organization.
 
-The current monitoring layer focuses on feature drift. A production system should additionally monitor:
-
-- Prediction-score drift
-- Fraud-rate drift after labels mature
-- Precision and recall over time
-- Alert volumes
-- API latency and errors
-- Data-quality failures
-- Feature freshness
-- Model calibration
-- Segment-level performance
+The project demonstrates production-oriented ML patterns but is not a production banking system. Additional controls would be required for real financial deployment, including authentication, authorization, secrets management, encryption, audit controls, data-quality SLAs, observability, infrastructure hardening, and formal model governance.
 
 ---
 
@@ -786,58 +976,78 @@ The current monitoring layer focuses on feature drift. A production system shoul
 
 Potential extensions include:
 
-- Prediction-score monitoring
-- Model performance monitoring after delayed labels arrive
-- Automated retraining triggers
+- Automated retraining workflows
+- Persistent monitoring history
 - Model registry and versioning
 - Experiment tracking
-- API authentication
+- API authentication and authorization
 - Batch scoring
 - Database-backed investigation queues
 - Investigator feedback capture
+- Model calibration monitoring
+- Segment-level fairness/performance monitoring
+- Data-quality and feature-freshness checks
+- API latency/error monitoring
 - Cloud deployment
-- Observability and alerting
-- Scheduled drift reports
+- Scheduled monitoring reports
+- Production alerting
 
 ---
 
-# Summary
+# What This Project Demonstrates
 
-This repository demonstrates an end-to-end fraud detection system extending beyond model training.
+This repository goes beyond training a classifier.
 
-It includes:
-
-```text
-Data engineering
-Feature engineering
-Leakage auditing
-Supervised fraud modeling
-Anomaly detection
-Business threshold optimization
-Capacity-based evaluation
-SHAP explainability
-Model persistence
-REST API serving
-Investigator dashboard
-Feature drift monitoring
-Drift stress testing
-Automated testing
-GitHub Actions CI
-Docker deployment configuration
-```
-
-The final XGBoost model achieves:
+It demonstrates an end-to-end workflow spanning:
 
 ```text
-ROC-AUC: 0.8866
-PR-AUC:  0.6613
-Recall:  75.50%
+Data Engineering
+        ↓
+Leakage-Safe Feature Engineering
+        ↓
+Supervised + Unsupervised Modeling
+        ↓
+Business Threshold Optimization
+        ↓
+Capacity-Aware Evaluation
+        ↓
+SHAP Explainability
+        ↓
+Model Persistence
+        ↓
+REST API Serving
+        ↓
+Investigator Dashboard
+        ↓
+Feature + Score + Performance Monitoring
+        ↓
+Unified Model Health
+        ↓
+Automated Testing
+        ↓
+Continuous Integration
+        ↓
+Containerized Deployment Configuration
 ```
 
-at a business-selected operating threshold of:
+Final champion model:
 
 ```text
-0.46
+Model:      XGBoost
+ROC-AUC:    0.8866
+PR-AUC:     0.6613
+Recall:     75.50%
+Threshold:  0.46
 ```
 
-while the monitoring and CI layers provide the foundations for operating the model as an ML system rather than treating it as a standalone notebook experiment.
+Current unified monitoring state:
+
+```text
+Overall Model Health: MONITOR
+
+Reason:
+Moderate recall degradation while feature
+and prediction-score distributions remain stable.
+```
+
+The goal is not simply to produce a high-performing fraud classifier, but to demonstrate how such a model can be **evaluated, explained, served, tested, monitored, and governed as an ML system**.
